@@ -1,0 +1,16 @@
+[package]
+name = "x3dh"
+version = "0.0.1"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrayref = "0.3"
+rand = "0.7.0"
+hkdf = "0.11"
+aes-gcm = "0.9.4"
+sha2 = "0.9"
+curve25519-dalek = "3.1"
+ed25519-dalek = "1"
+x25519-dalek = "1"
