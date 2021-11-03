@@ -1,5 +1,7 @@
 mod errors;
+mod signature;
 mod types;
+mod x3dh;
 mod xeddsa;
 
 #[cfg(test)]

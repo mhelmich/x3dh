@@ -4,6 +4,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum X3dhError {
     Base64EncodingError(base64::DecodeError),
+    HkdfInvalidLength(hkdf::InvalidLength),
     StringError(String),
 }
 
@@ -13,6 +14,7 @@ impl fmt::Display for X3dhError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             X3dhError::Base64EncodingError(e) => write!(f, "Base64EncodingError {{ {} }}", e),
+            X3dhError::HkdfInvalidLength(e) => write!(f, "HkdfInvalidLength {{ {} }}", e),
             X3dhError::StringError(e) => write!(f, "Error {{ {} }}", e),
         }
     }
@@ -24,8 +26,20 @@ impl From<base64::DecodeError> for X3dhError {
     }
 }
 
+impl From<hkdf::InvalidLength> for X3dhError {
+    fn from(value: hkdf::InvalidLength) -> Self {
+        X3dhError::HkdfInvalidLength(value)
+    }
+}
+
 impl From<String> for X3dhError {
     fn from(value: String) -> Self {
         X3dhError::StringError(value)
+    }
+}
+
+impl From<&str> for X3dhError {
+    fn from(value: &str) -> Self {
+        X3dhError::StringError(String::from(value))
     }
 }
