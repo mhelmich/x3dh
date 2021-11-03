@@ -3,6 +3,7 @@ use arrayref::array_ref;
 use base64;
 use core::convert::TryFrom;
 use rand::{thread_rng, RngCore};
+use sha2::{Digest, Sha256};
 use x25519_dalek;
 
 // implemented after:
@@ -117,6 +118,13 @@ impl From<PrivateKey> for PublicKey {
     }
 }
 
+impl PublicKey {
+    fn hash(&self) -> Sha256Hash {
+        let digest = Sha256::digest(self.0.as_ref());
+        Sha256Hash(*array_ref![digest, 0, HASH_LENGTH])
+    }
+}
+
 pub(crate) struct Signature([u8; SIGNATURE_LENGTH]);
 
 #[test]
@@ -143,4 +151,11 @@ fn test_serde_prekey_bundle() {
     assert_eq!(pb1.signed_prekey.0, pb2.signed_prekey.0);
     assert_eq!(pb1.prekey_signature.0, pb2.prekey_signature.0);
     assert_eq!(pb1.one_time_prekey.0, pb2.one_time_prekey.0);
+}
+
+#[test]
+fn test_hash_public_key() {
+    let key1 = PublicKey::from(PrivateKey::new());
+    let key2 = PublicKey::from(PrivateKey::new());
+    assert_ne!(key1.hash().0, key2.hash().0);
 }
