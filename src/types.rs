@@ -1,4 +1,6 @@
 use crate::errors::X3dhError;
+use aes_gcm::aead::{Aead, NewAead, Payload};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 use arrayref::array_ref;
 use base64;
 use core::convert::TryFrom;
@@ -13,14 +15,51 @@ use x25519_dalek;
 pub(crate) const CURVE25519_SECRET_LENGTH: usize = 32;
 // byte size of a Curve25519 public key
 pub(crate) const CURVE25519_PUBLIC_LENGTH: usize = CURVE25519_SECRET_LENGTH;
-// byte size of a diffie hellman shared secret
-pub(crate) const SHARED_SECRET_LENGTH: usize = 32;
+// // byte size of a diffie hellman shared secret (aes256 key)
+// pub(crate) const SHARED_SECRET_LENGTH: usize = 32;
 // byte size of a Curve25519 signature
 pub(crate) const SIGNATURE_LENGTH: usize = 64;
 // byte size of a sha256 hash
 pub(crate) const HASH_LENGTH: usize = 32;
 // byte size of an aes256 key
 pub(crate) const AES256_SECRET_LENGTH: usize = 32;
+// byte size of aes256 nonce
+pub(crate) const AES256_NONCE_LENGTH: usize = 12;
+
+pub(crate) struct AssociatedData {
+    pub(crate) initiator_identity_key: PublicKey,
+    pub(crate) responder_identity_key: PublicKey,
+}
+
+impl AssociatedData {
+    pub(crate) const SIZE: usize = CURVE25519_PUBLIC_LENGTH + CURVE25519_PUBLIC_LENGTH;
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(self.initiator_identity_key.0.as_ref());
+        out.extend_from_slice(self.responder_identity_key.0.as_ref());
+        out
+    }
+}
+
+impl TryFrom<&[u8; Self::SIZE]> for AssociatedData {
+    type Error = X3dhError;
+    fn try_from(value: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+        let initiator_identity_key = PublicKey(*array_ref![
+            value,
+            2 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
+            CURVE25519_PUBLIC_LENGTH
+        ]);
+        let responder_identity_key = PublicKey(*array_ref![
+            value,
+            3 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
+            CURVE25519_PUBLIC_LENGTH
+        ]);
+        Ok(AssociatedData {
+            initiator_identity_key,
+            responder_identity_key,
+        })
+    }
+}
 
 // Alice then sends Bob an initial message containing:
 //     Alice's identity key IKA
@@ -32,11 +71,17 @@ pub(crate) struct InitialMessage {
     pub(crate) ephemeral_key: PublicKey,
     pub(crate) prekey_hash: Sha256Hash,
     pub(crate) one_time_key_hash: Sha256Hash,
+    pub(crate) associated_data: AssociatedData,
 }
 
 impl InitialMessage {
-    fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
+        out.extend_from_slice(self.identity_key.0.as_ref());
+        out.extend_from_slice(self.ephemeral_key.0.as_ref());
+        out.extend_from_slice(self.prekey_hash.0.as_ref());
+        out.extend_from_slice(self.identity_key.0.as_ref());
+        out.extend_from_slice(self.associated_data.to_bytes().as_ref());
         out
     }
 
@@ -66,12 +111,18 @@ impl TryFrom<String> for InitialMessage {
             2 * CURVE25519_PUBLIC_LENGTH + HASH_LENGTH,
             HASH_LENGTH
         ]);
+        let associated_data = AssociatedData::try_from(array_ref![
+            bytes,
+            2 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
+            2 * CURVE25519_PUBLIC_LENGTH
+        ])?;
 
         Ok(Self {
             identity_key,
             ephemeral_key,
             prekey_hash,
             one_time_key_hash,
+            associated_data,
         })
     }
 }
@@ -226,27 +277,107 @@ impl From<[u8; SIGNATURE_LENGTH]> for Signature {
     }
 }
 
-pub(crate) struct EncryptionKey([u8; SHARED_SECRET_LENGTH]);
+// pub(crate) struct EncryptionKey([u8; SHARED_SECRET_LENGTH]);
 
-impl From<[u8; SHARED_SECRET_LENGTH]> for EncryptionKey {
-    fn from(value: [u8; SHARED_SECRET_LENGTH]) -> EncryptionKey {
-        EncryptionKey(value)
+// impl EncryptionKey {
+//     pub(crate) fn encrypt(
+//         &self,
+//         data: &[u8],
+//         nonce: &[u8; AES256_NONCE_LENGTH],
+//         aad: &[u8],
+//     ) -> Result<Vec<u8>, X3dhError> {
+//         let key = Key::from_slice(&self.0);
+//         let cipher = Aes256Gcm::new(key);
+//         let nonce = Nonce::from_slice(nonce);
+//         let payload = Payload {
+//             aad: aad,
+//             msg: data,
+//         };
+//         let output = cipher.encrypt(nonce, payload)?;
+//         Ok(output)
+//     }
+// }
+
+// impl From<[u8; SHARED_SECRET_LENGTH]> for EncryptionKey {
+//     fn from(value: [u8; SHARED_SECRET_LENGTH]) -> EncryptionKey {
+//         EncryptionKey(value)
+//     }
+// }
+
+// pub(crate) struct DecryptionKey([u8; SHARED_SECRET_LENGTH]);
+
+// impl DecryptionKey {
+//     pub(crate) fn decrypt(
+//         &self,
+//         data: &[u8],
+//         nonce: &[u8; AES256_NONCE_LENGTH],
+//         aad: &[u8],
+//     ) -> Result<Vec<u8>, X3dhError> {
+//         let key = Key::from_slice(&self.0);
+//         let cipher = Aes256Gcm::new(key);
+//         let nonce = Nonce::from_slice(nonce);
+//         let payload = Payload {
+//             aad: aad,
+//             msg: data,
+//         };
+//         let output = cipher.decrypt(nonce, payload)?;
+//         Ok(output)
+//     }
+// }
+
+// impl From<[u8; SHARED_SECRET_LENGTH]> for DecryptionKey {
+//     fn from(value: [u8; SHARED_SECRET_LENGTH]) -> DecryptionKey {
+//         DecryptionKey(value)
+//     }
+// }
+
+pub(crate) struct SharedSecret([u8; AES256_SECRET_LENGTH]);
+
+impl SharedSecret {
+    pub(crate) fn encrypt(
+        &self,
+        data: &[u8],
+        nonce: &[u8; AES256_NONCE_LENGTH],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, X3dhError> {
+        let key = Key::from_slice(&self.0);
+        let cipher = Aes256Gcm::new(key);
+        let nonce = Nonce::from_slice(nonce);
+        let payload = Payload {
+            aad: aad,
+            msg: data,
+        };
+        let output = cipher.encrypt(nonce, payload)?;
+        Ok(output)
+    }
+
+    pub(crate) fn decrypt(
+        &self,
+        data: &[u8],
+        nonce: &[u8; AES256_NONCE_LENGTH],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, X3dhError> {
+        let key = Key::from_slice(&self.0);
+        let cipher = Aes256Gcm::new(key);
+        let nonce = Nonce::from_slice(nonce);
+        let payload = Payload {
+            aad: aad,
+            msg: data,
+        };
+        let output = cipher.decrypt(nonce, payload)?;
+        Ok(output)
     }
 }
 
-pub(crate) struct DecryptionKey([u8; SHARED_SECRET_LENGTH]);
-
-impl From<[u8; SHARED_SECRET_LENGTH]> for DecryptionKey {
-    fn from(value: [u8; SHARED_SECRET_LENGTH]) -> DecryptionKey {
-        DecryptionKey(value)
-    }
-}
-
-pub(crate) struct SharedSecret([u8; SHARED_SECRET_LENGTH]);
-
-impl AsRef<[u8; SHARED_SECRET_LENGTH]> for SharedSecret {
-    fn as_ref(&self) -> &[u8; SHARED_SECRET_LENGTH] {
+impl AsRef<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
+    fn as_ref(&self) -> &[u8; AES256_SECRET_LENGTH] {
         &self.0
+    }
+}
+
+impl From<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
+    fn from(value: [u8; AES256_SECRET_LENGTH]) -> SharedSecret {
+        SharedSecret(value)
     }
 }
 
@@ -281,4 +412,12 @@ fn test_hash_public_key() {
     let key1 = PublicKey::from(PrivateKey::new());
     let key2 = PublicKey::from(PrivateKey::new());
     assert_ne!(key1.hash().0, key2.hash().0);
+}
+
+#[test]
+fn test_encrypt_decrypt() {
+    let mut rng = thread_rng();
+    let mut key_bytes = [0u8; AES256_SECRET_LENGTH];
+    rng.fill_bytes(&mut key_bytes);
+    SharedSecret::from(key_bytes);
 }
