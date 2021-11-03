@@ -1,3 +1,7 @@
+mod errors;
+mod types;
+mod xeddsa;
+
 #[cfg(test)]
 mod tests {
     #[test]
