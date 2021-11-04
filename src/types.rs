@@ -68,7 +68,7 @@ impl TryFrom<&[u8; Self::SIZE]> for AssociatedData {
 //     Identifiers stating which of Bob's prekeys Alice used
 //     An initial ciphertext encrypted with some AEAD encryption scheme [4] using AD as associated data and using an encryption key which is either SK or the output from some cryptographic PRF keyed by SK.
 #[derive(Copy, Clone)]
-pub(crate) struct InitialMessage {
+pub struct InitialMessage {
     pub(crate) identity_key: PublicKey,
     pub(crate) ephemeral_key: PublicKey,
     pub(crate) prekey_hash: Sha256Hash,
@@ -77,7 +77,7 @@ pub(crate) struct InitialMessage {
 }
 
 impl InitialMessage {
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.identity_key.0.as_ref());
         out.extend_from_slice(self.ephemeral_key.0.as_ref());
@@ -87,7 +87,7 @@ impl InitialMessage {
         out
     }
 
-    fn to_base64(&self) -> String {
+    pub fn to_base64(&self) -> String {
         base64::encode(self.to_bytes())
     }
 }
@@ -135,7 +135,7 @@ impl TryFrom<String> for InitialMessage {
 //     Bob's prekey signature Sig(IKB, Encode(SPKB))
 //     (Optionally) Bob's one-time prekey OPKB
 #[derive(Copy, Clone)]
-pub(crate) struct PrekeyBundle {
+pub struct PrekeyBundle {
     pub(crate) identity_key: PublicKey,
     pub(crate) signed_prekey: PublicKey,
     pub(crate) prekey_signature: Signature,
@@ -149,7 +149,7 @@ impl PrekeyBundle {
         + SIGNATURE_LENGTH
         + CURVE25519_SECRET_LENGTH;
 
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.identity_key.0.as_ref());
         out.extend_from_slice(self.signed_prekey.0.as_ref());
@@ -158,7 +158,7 @@ impl PrekeyBundle {
         out
     }
 
-    pub(crate) fn to_base64(&self) -> String {
+    pub fn to_base64(&self) -> String {
         base64::encode(self.to_bytes())
     }
 }
@@ -197,12 +197,18 @@ impl TryFrom<String> for PrekeyBundle {
     }
 }
 
-#[derive(Copy, Clone)]
-pub(crate) struct Sha256Hash([u8; HASH_LENGTH]);
+#[derive(Clone, Copy, Eq, Hash)]
+pub struct Sha256Hash([u8; HASH_LENGTH]);
 
 impl From<&[u8; HASH_LENGTH]> for Sha256Hash {
     fn from(value: &[u8; HASH_LENGTH]) -> Sha256Hash {
         Sha256Hash(*value)
+    }
+}
+
+impl PartialEq for Sha256Hash {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
