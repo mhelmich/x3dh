@@ -26,6 +26,7 @@ pub(crate) const AES256_SECRET_LENGTH: usize = 32;
 // byte size of aes256 nonce
 pub(crate) const AES256_NONCE_LENGTH: usize = 12;
 
+#[derive(Copy, Clone)]
 pub(crate) struct AssociatedData {
     pub(crate) initiator_identity_key: PublicKey,
     pub(crate) responder_identity_key: PublicKey,
@@ -66,6 +67,7 @@ impl TryFrom<&[u8; Self::SIZE]> for AssociatedData {
 //     Alice's ephemeral key EKA
 //     Identifiers stating which of Bob's prekeys Alice used
 //     An initial ciphertext encrypted with some AEAD encryption scheme [4] using AD as associated data and using an encryption key which is either SK or the output from some cryptographic PRF keyed by SK.
+#[derive(Copy, Clone)]
 pub(crate) struct InitialMessage {
     pub(crate) identity_key: PublicKey,
     pub(crate) ephemeral_key: PublicKey,
@@ -132,6 +134,7 @@ impl TryFrom<String> for InitialMessage {
 //     Bob's signed prekey SPKB
 //     Bob's prekey signature Sig(IKB, Encode(SPKB))
 //     (Optionally) Bob's one-time prekey OPKB
+#[derive(Copy, Clone)]
 pub(crate) struct PrekeyBundle {
     pub(crate) identity_key: PublicKey,
     pub(crate) signed_prekey: PublicKey,
@@ -194,6 +197,7 @@ impl TryFrom<String> for PrekeyBundle {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct Sha256Hash([u8; HASH_LENGTH]);
 
 impl From<&[u8; HASH_LENGTH]> for Sha256Hash {
@@ -225,6 +229,7 @@ impl AsRef<[u8; CURVE25519_SECRET_LENGTH]> for PrivateKey {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct PublicKey([u8; CURVE25519_PUBLIC_LENGTH]);
 
 impl From<PrivateKey> for PublicKey {
@@ -263,6 +268,7 @@ impl PublicKey {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct Signature([u8; SIGNATURE_LENGTH]);
 
 impl AsRef<[u8; SIGNATURE_LENGTH]> for Signature {
