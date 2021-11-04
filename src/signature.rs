@@ -18,12 +18,16 @@ pub(crate) fn verify(signature: &Signature, key: &PublicKey, data: &[u8]) -> boo
     dalek_public_key.verify(data, signature.as_ref())
 }
 
-#[test]
-fn test_sign_verify() {
-    let private_key = PrivateKey::new();
-    let public_key = PublicKey::from(&private_key);
-    let data = String::from("Hello World!!!");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_sign_verify() {
+        let private_key = PrivateKey::new();
+        let public_key = PublicKey::from(&private_key);
+        let data = String::from("Hello World!!!");
 
-    let sig = sign(&private_key, data.as_bytes());
-    assert!(verify(&sig, &public_key, data.as_bytes()));
+        let sig = sign(&private_key, data.as_bytes());
+        assert!(verify(&sig, &public_key, data.as_bytes()));
+    }
 }

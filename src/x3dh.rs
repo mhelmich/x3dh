@@ -119,61 +119,65 @@ fn hkdf(
     Ok((shared_key1, shared_key2))
 }
 
-#[test]
-fn test_generate_prekey_bundle() {
-    let identity_key = PrivateKey::new();
-    let prekey = PrivateKey::new();
-    let one_time_key = PrivateKey::new();
-    let pb1 = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
-    let pb1_bytes = pb1.to_bytes();
-    assert_eq!(pb1_bytes.len(), PrekeyBundle::SIZE);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_generate_prekey_bundle() {
+        let identity_key = PrivateKey::new();
+        let prekey = PrivateKey::new();
+        let one_time_key = PrivateKey::new();
+        let pb1 = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+        let pb1_bytes = pb1.to_bytes();
+        assert_eq!(pb1_bytes.len(), PrekeyBundle::SIZE);
 
-    let pb1_base64 = pb1.to_base64();
-    let pb2 = PrekeyBundle::try_from(pb1_base64).unwrap();
-    assert_eq!(pb2.one_time_prekey.as_ref(), pb1.one_time_prekey.as_ref());
-}
+        let pb1_base64 = pb1.to_base64();
+        let pb2 = PrekeyBundle::try_from(pb1_base64).unwrap();
+        assert_eq!(pb2.one_time_prekey.as_ref(), pb1.one_time_prekey.as_ref());
+    }
 
-#[test]
-fn test_process_prekey_bundle() {
-    let identity_key = PrivateKey::new();
-    let identity_key_pub = PublicKey::from(&identity_key);
-    let prekey = PrivateKey::new();
-    let one_time_key = PrivateKey::new();
-    let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+    #[test]
+    fn test_process_prekey_bundle() {
+        let identity_key = PrivateKey::new();
+        let identity_key_pub = PublicKey::from(&identity_key);
+        let prekey = PrivateKey::new();
+        let one_time_key = PrivateKey::new();
+        let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
 
-    let (initial_message, encryption_key, decryption_key) =
-        process_prekey_bundle(identity_key, pb).unwrap();
-    assert_eq!(
-        initial_message.identity_key.as_ref(),
-        identity_key_pub.as_ref()
-    );
-    assert_eq!(encryption_key.as_ref().len(), AES256_SECRET_LENGTH);
-    assert_eq!(decryption_key.as_ref().len(), AES256_SECRET_LENGTH);
+        let (initial_message, encryption_key, decryption_key) =
+            process_prekey_bundle(identity_key, pb).unwrap();
+        assert_eq!(
+            initial_message.identity_key.as_ref(),
+            identity_key_pub.as_ref()
+        );
+        assert_eq!(encryption_key.as_ref().len(), AES256_SECRET_LENGTH);
+        assert_eq!(decryption_key.as_ref().len(), AES256_SECRET_LENGTH);
 
-    let im_bytes = initial_message.to_bytes();
-    assert_eq!(
-        im_bytes.len(),
-        4 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH
-    );
-}
+        let im_bytes = initial_message.to_bytes();
+        assert_eq!(
+            im_bytes.len(),
+            4 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH
+        );
+    }
 
-#[test]
-fn test_process_initial_message() {
-    let identity_key = PrivateKey::new();
-    let prekey = PrivateKey::new();
-    let one_time_key = PrivateKey::new();
-    let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+    #[test]
+    fn test_process_initial_message() {
+        let identity_key = PrivateKey::new();
+        let prekey = PrivateKey::new();
+        let one_time_key = PrivateKey::new();
+        let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
 
-    let (initial_message, encryption_key1, decryption_key1) =
-        process_prekey_bundle(identity_key, pb).unwrap();
-    let (encryption_key2, decryption_key2) =
-        process_initial_message(identity_key, prekey, one_time_key, initial_message).unwrap();
-    assert_eq!(encryption_key1.as_ref(), decryption_key2.as_ref());
-    assert_eq!(decryption_key1.as_ref(), encryption_key2.as_ref());
-    let data = b"Hello World!";
-    let nonce = b"12byte_nonce";
-    let aad = initial_message.associated_data;
-    let cipher_text = encryption_key1.encrypt(data, nonce, &aad).unwrap();
-    let clear_text = decryption_key2.decrypt(&cipher_text, nonce, &aad).unwrap();
-    assert_eq!(data.to_vec(), clear_text);
+        let (initial_message, encryption_key1, decryption_key1) =
+            process_prekey_bundle(identity_key, pb).unwrap();
+        let (encryption_key2, decryption_key2) =
+            process_initial_message(identity_key, prekey, one_time_key, initial_message).unwrap();
+        assert_eq!(encryption_key1.as_ref(), decryption_key2.as_ref());
+        assert_eq!(decryption_key1.as_ref(), encryption_key2.as_ref());
+        let data = b"Hello World!";
+        let nonce = b"12byte_nonce";
+        let aad = initial_message.associated_data;
+        let cipher_text = encryption_key1.encrypt(data, nonce, &aad).unwrap();
+        let clear_text = decryption_key2.decrypt(&cipher_text, nonce, &aad).unwrap();
+        assert_eq!(data.to_vec(), clear_text);
+    }
 }

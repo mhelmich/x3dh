@@ -357,43 +357,47 @@ impl From<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
     }
 }
 
-#[test]
-fn test_serde_prekey_bundle() {
-    let mut rng = thread_rng();
-    let mut signature_bytes = [0u8; 64];
-    rng.fill_bytes(&mut signature_bytes);
-    let signature = Signature(signature_bytes);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_serde_prekey_bundle() {
+        let mut rng = thread_rng();
+        let mut signature_bytes = [0u8; 64];
+        rng.fill_bytes(&mut signature_bytes);
+        let signature = Signature(signature_bytes);
 
-    let key1 = PublicKey::from(PrivateKey::new());
-    let key2 = PublicKey::from(PrivateKey::new());
-    let key3 = PublicKey::from(PrivateKey::new());
+        let key1 = PublicKey::from(PrivateKey::new());
+        let key2 = PublicKey::from(PrivateKey::new());
+        let key3 = PublicKey::from(PrivateKey::new());
 
-    let pb1 = PrekeyBundle {
-        identity_key: key1,
-        signed_prekey: key2,
-        prekey_signature: signature,
-        one_time_prekey: key3,
-    };
+        let pb1 = PrekeyBundle {
+            identity_key: key1,
+            signed_prekey: key2,
+            prekey_signature: signature,
+            one_time_prekey: key3,
+        };
 
-    let b64 = pb1.to_base64();
-    let pb2 = PrekeyBundle::try_from(b64).unwrap();
-    assert_eq!(pb1.identity_key.0, pb2.identity_key.0);
-    assert_eq!(pb1.signed_prekey.0, pb2.signed_prekey.0);
-    assert_eq!(pb1.prekey_signature.0, pb2.prekey_signature.0);
-    assert_eq!(pb1.one_time_prekey.0, pb2.one_time_prekey.0);
-}
+        let b64 = pb1.to_base64();
+        let pb2 = PrekeyBundle::try_from(b64).unwrap();
+        assert_eq!(pb1.identity_key.0, pb2.identity_key.0);
+        assert_eq!(pb1.signed_prekey.0, pb2.signed_prekey.0);
+        assert_eq!(pb1.prekey_signature.0, pb2.prekey_signature.0);
+        assert_eq!(pb1.one_time_prekey.0, pb2.one_time_prekey.0);
+    }
 
-#[test]
-fn test_hash_public_key() {
-    let key1 = PublicKey::from(PrivateKey::new());
-    let key2 = PublicKey::from(PrivateKey::new());
-    assert_ne!(key1.hash().0, key2.hash().0);
-}
+    #[test]
+    fn test_hash_public_key() {
+        let key1 = PublicKey::from(PrivateKey::new());
+        let key2 = PublicKey::from(PrivateKey::new());
+        assert_ne!(key1.hash().0, key2.hash().0);
+    }
 
-#[test]
-fn test_encrypt_decrypt() {
-    let mut rng = thread_rng();
-    let mut key_bytes = [0u8; AES256_SECRET_LENGTH];
-    rng.fill_bytes(&mut key_bytes);
-    SharedSecret::from(key_bytes);
+    #[test]
+    fn test_encrypt_decrypt() {
+        let mut rng = thread_rng();
+        let mut key_bytes = [0u8; AES256_SECRET_LENGTH];
+        rng.fill_bytes(&mut key_bytes);
+        SharedSecret::from(key_bytes);
+    }
 }

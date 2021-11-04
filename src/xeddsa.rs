@@ -101,15 +101,19 @@ impl XEddsaVerifier for XPublicKey {
     }
 }
 
-#[test]
-fn test_convert() {
-    let nonce = [0u8; 64];
-    let msg = [0u8; 200];
-    let mut privkey = [0u8; 32];
-    privkey[8] = 189;
-    let xsecret_key = XSecretKey::from(privkey);
-    let xpublic_key = XPublicKey::from(&xsecret_key);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_convert() {
+        let nonce = [0u8; 64];
+        let msg = [0u8; 200];
+        let mut privkey = [0u8; 32];
+        privkey[8] = 189;
+        let xsecret_key = XSecretKey::from(privkey);
+        let xpublic_key = XPublicKey::from(&xsecret_key);
 
-    let sig = xsecret_key.sign(&msg, &nonce);
-    assert!(xpublic_key.verify(&msg, &sig));
+        let sig = xsecret_key.sign(&msg, &nonce);
+        assert!(xpublic_key.verify(&msg, &sig));
+    }
 }
