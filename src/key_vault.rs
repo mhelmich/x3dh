@@ -26,8 +26,8 @@ impl KeyVault {
         prekeys.insert(prekey_pub.hash(), prekey);
         Self {
             identity_key: PrivateKey::new(),
-            prekey: prekey,
-            prekeys: prekeys,
+            prekey,
+            prekeys,
             one_time_keys: HashMap::new(),
             encryption_keys: HashMap::new(),
             decryption_keys: HashMap::new(),
@@ -63,11 +63,11 @@ impl KeyVault {
         let used_prekey = self
             .prekeys
             .get(&initial_message.prekey_hash)
-            .ok_or(X3dhError::from("could not find prekey"))?;
+            .ok_or_else(|| X3dhError::from("could not find prekey"))?;
         let used_one_time_key = self
             .one_time_keys
             .get(&initial_message.one_time_key_hash)
-            .ok_or(X3dhError::from("could not find one time key"))?;
+            .ok_or_else(|| X3dhError::from("could not find one time key"))?;
         let (encryption_key, decryption_key) = x3dh::process_initial_message(
             self.identity_key,
             *used_prekey,
@@ -92,11 +92,11 @@ impl KeyVault {
         let cipher = self
             .encryption_keys
             .get(&recipient_handle)
-            .ok_or(X3dhError::from("could not find encryption key"))?;
+            .ok_or_else(|| X3dhError::from("could not find encryption key"))?;
         let aad = self
             .associated_data
             .get(&recipient_handle)
-            .ok_or(X3dhError::from("could not find associated data"))?;
+            .ok_or_else(|| X3dhError::from("could not find associated data"))?;
 
         let mut rng = thread_rng();
         let mut nonce = [0u8; AES256_NONCE_LENGTH];
@@ -118,11 +118,11 @@ impl KeyVault {
         let cipher = self
             .decryption_keys
             .get(&recipient_handle)
-            .ok_or(X3dhError::from("could not find decryption key"))?;
+            .ok_or_else(|| X3dhError::from("could not find decryption key"))?;
         let aad = self
             .associated_data
             .get(&recipient_handle)
-            .ok_or(X3dhError::from("could not find associated data"))?;
+            .ok_or_else(|| X3dhError::from("could not find associated data"))?;
         let out = cipher.decrypt(cipher_text, nonce, aad)?;
         Ok(out)
     }
@@ -132,5 +132,11 @@ impl KeyVault {
         let public_key = PublicKey::from(private_key);
         self.one_time_keys.insert(public_key.hash(), private_key);
         private_key
+    }
+}
+
+impl Default for KeyVault {
+    fn default() -> Self {
+        KeyVault::new()
     }
 }

@@ -2,13 +2,11 @@ use crate::errors::X3dhError;
 use crate::signature::{sign, verify};
 use crate::types::{
     AssociatedData, DecryptionKey, EncryptionKey, InitialMessage, PrekeyBundle, PrivateKey,
-    PublicKey, SharedSecret,
+    PublicKey, SharedSecret, AES256_SECRET_LENGTH,
 };
-use crate::types::{AES256_SECRET_LENGTH, CURVE25519_PUBLIC_LENGTH, HASH_LENGTH};
 use arrayref::array_ref;
 use hkdf::Hkdf;
 use sha2::Sha256;
-use std::convert::TryFrom;
 
 pub(crate) fn generate_prekey_bundle(
     identity_key: &PrivateKey,
@@ -16,7 +14,7 @@ pub(crate) fn generate_prekey_bundle(
     one_time_key: &PrivateKey,
 ) -> PrekeyBundle {
     let prekey_pub = PublicKey::from(prekey);
-    let signature = sign(&identity_key, prekey_pub.as_ref());
+    let signature = sign(identity_key, prekey_pub.as_ref());
     PrekeyBundle {
         identity_key: PublicKey::from(identity_key),
         signed_prekey: prekey_pub,
@@ -122,6 +120,9 @@ fn hkdf(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{CURVE25519_PUBLIC_LENGTH, HASH_LENGTH};
+    use std::convert::TryFrom;
+
     #[test]
     fn test_generate_prekey_bundle() {
         let identity_key = PrivateKey::new();

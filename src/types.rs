@@ -2,11 +2,10 @@ use crate::errors::X3dhError;
 use aes_gcm::aead::{Aead, NewAead, Payload};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use arrayref::array_ref;
-use base64;
 use core::convert::TryFrom;
-use rand::{thread_rng, RngCore};
+use rand::prelude::*;
 use sha2::{Digest, Sha256};
-use x25519_dalek;
+use std::hash::{Hash, Hasher};
 
 // implemented after:
 // https://signal.org/docs/specifications/x3dh/#x3dh-parameterss
@@ -34,7 +33,7 @@ pub(crate) struct AssociatedData {
 
 impl AssociatedData {
     pub(crate) const SIZE: usize = CURVE25519_PUBLIC_LENGTH + CURVE25519_PUBLIC_LENGTH;
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.initiator_identity_key.0.as_ref());
         out.extend_from_slice(self.responder_identity_key.0.as_ref());
@@ -77,7 +76,7 @@ pub struct InitialMessage {
 }
 
 impl InitialMessage {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.identity_key.0.as_ref());
         out.extend_from_slice(self.ephemeral_key.0.as_ref());
@@ -87,7 +86,7 @@ impl InitialMessage {
         out
     }
 
-    pub fn to_base64(&self) -> String {
+    pub fn to_base64(self) -> String {
         base64::encode(self.to_bytes())
     }
 }
@@ -149,7 +148,7 @@ impl PrekeyBundle {
         + SIGNATURE_LENGTH
         + CURVE25519_SECRET_LENGTH;
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.identity_key.0.as_ref());
         out.extend_from_slice(self.signed_prekey.0.as_ref());
@@ -158,7 +157,7 @@ impl PrekeyBundle {
         out
     }
 
-    pub fn to_base64(&self) -> String {
+    pub fn to_base64(self) -> String {
         base64::encode(self.to_bytes())
     }
 }
@@ -197,12 +196,18 @@ impl TryFrom<String> for PrekeyBundle {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash)]
+#[derive(Clone, Copy, Eq)]
 pub struct Sha256Hash([u8; HASH_LENGTH]);
 
 impl From<&[u8; HASH_LENGTH]> for Sha256Hash {
     fn from(value: &[u8; HASH_LENGTH]) -> Sha256Hash {
         Sha256Hash(*value)
+    }
+}
+
+impl Hash for Sha256Hash {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 
