@@ -206,6 +206,7 @@ impl From<&[u8; HASH_LENGTH]> for Sha256Hash {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct PrivateKey([u8; CURVE25519_SECRET_LENGTH]);
 
 impl PrivateKey {
@@ -259,13 +260,6 @@ impl PublicKey {
         let digest = Sha256::digest(self.0.as_ref());
         Sha256Hash(*array_ref![digest, 0, HASH_LENGTH])
     }
-
-    pub(crate) fn diffie_hellman(&self, public_key: &PublicKey) -> SharedSecret {
-        let dalek_private_key = x25519_dalek::StaticSecret::from(self.0);
-        let dalek_public_key = x25519_dalek::PublicKey::from(public_key.0);
-        let dh = dalek_private_key.diffie_hellman(&dalek_public_key);
-        SharedSecret(dh.to_bytes())
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -283,97 +277,73 @@ impl From<[u8; SIGNATURE_LENGTH]> for Signature {
     }
 }
 
-// pub(crate) struct EncryptionKey([u8; SHARED_SECRET_LENGTH]);
+pub(crate) struct EncryptionKey([u8; AES256_SECRET_LENGTH]);
 
-// impl EncryptionKey {
-//     pub(crate) fn encrypt(
-//         &self,
-//         data: &[u8],
-//         nonce: &[u8; AES256_NONCE_LENGTH],
-//         aad: &[u8],
-//     ) -> Result<Vec<u8>, X3dhError> {
-//         let key = Key::from_slice(&self.0);
-//         let cipher = Aes256Gcm::new(key);
-//         let nonce = Nonce::from_slice(nonce);
-//         let payload = Payload {
-//             aad: aad,
-//             msg: data,
-//         };
-//         let output = cipher.encrypt(nonce, payload)?;
-//         Ok(output)
-//     }
-// }
-
-// impl From<[u8; SHARED_SECRET_LENGTH]> for EncryptionKey {
-//     fn from(value: [u8; SHARED_SECRET_LENGTH]) -> EncryptionKey {
-//         EncryptionKey(value)
-//     }
-// }
-
-// pub(crate) struct DecryptionKey([u8; SHARED_SECRET_LENGTH]);
-
-// impl DecryptionKey {
-//     pub(crate) fn decrypt(
-//         &self,
-//         data: &[u8],
-//         nonce: &[u8; AES256_NONCE_LENGTH],
-//         aad: &[u8],
-//     ) -> Result<Vec<u8>, X3dhError> {
-//         let key = Key::from_slice(&self.0);
-//         let cipher = Aes256Gcm::new(key);
-//         let nonce = Nonce::from_slice(nonce);
-//         let payload = Payload {
-//             aad: aad,
-//             msg: data,
-//         };
-//         let output = cipher.decrypt(nonce, payload)?;
-//         Ok(output)
-//     }
-// }
-
-// impl From<[u8; SHARED_SECRET_LENGTH]> for DecryptionKey {
-//     fn from(value: [u8; SHARED_SECRET_LENGTH]) -> DecryptionKey {
-//         DecryptionKey(value)
-//     }
-// }
-
-pub(crate) struct SharedSecret([u8; AES256_SECRET_LENGTH]);
-
-impl SharedSecret {
+impl EncryptionKey {
     pub(crate) fn encrypt(
         &self,
         data: &[u8],
         nonce: &[u8; AES256_NONCE_LENGTH],
-        aad: &[u8],
+        aad: &AssociatedData,
     ) -> Result<Vec<u8>, X3dhError> {
         let key = Key::from_slice(&self.0);
         let cipher = Aes256Gcm::new(key);
         let nonce = Nonce::from_slice(nonce);
         let payload = Payload {
-            aad: aad,
+            aad: &aad.to_bytes(),
             msg: data,
         };
         let output = cipher.encrypt(nonce, payload)?;
         Ok(output)
     }
+}
 
+impl From<SharedSecret> for EncryptionKey {
+    fn from(value: SharedSecret) -> EncryptionKey {
+        EncryptionKey(value.0)
+    }
+}
+
+impl AsRef<[u8; AES256_SECRET_LENGTH]> for EncryptionKey {
+    fn as_ref(&self) -> &[u8; AES256_SECRET_LENGTH] {
+        &self.0
+    }
+}
+
+pub(crate) struct DecryptionKey([u8; AES256_SECRET_LENGTH]);
+
+impl DecryptionKey {
     pub(crate) fn decrypt(
         &self,
         data: &[u8],
         nonce: &[u8; AES256_NONCE_LENGTH],
-        aad: &[u8],
+        aad: &AssociatedData,
     ) -> Result<Vec<u8>, X3dhError> {
         let key = Key::from_slice(&self.0);
         let cipher = Aes256Gcm::new(key);
         let nonce = Nonce::from_slice(nonce);
         let payload = Payload {
-            aad: aad,
+            aad: &aad.to_bytes(),
             msg: data,
         };
         let output = cipher.decrypt(nonce, payload)?;
         Ok(output)
     }
 }
+
+impl From<SharedSecret> for DecryptionKey {
+    fn from(value: SharedSecret) -> DecryptionKey {
+        DecryptionKey(value.0)
+    }
+}
+
+impl AsRef<[u8; AES256_SECRET_LENGTH]> for DecryptionKey {
+    fn as_ref(&self) -> &[u8; AES256_SECRET_LENGTH] {
+        &self.0
+    }
+}
+
+pub(crate) struct SharedSecret([u8; AES256_SECRET_LENGTH]);
 
 impl AsRef<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
     fn as_ref(&self) -> &[u8; AES256_SECRET_LENGTH] {
