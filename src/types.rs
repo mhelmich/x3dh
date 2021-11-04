@@ -19,7 +19,7 @@ pub(crate) const CURVE25519_PUBLIC_LENGTH: usize = CURVE25519_SECRET_LENGTH;
 // byte size of a Curve25519 signature
 pub(crate) const SIGNATURE_LENGTH: usize = 64;
 // byte size of a sha256 hash
-pub(crate) const HASH_LENGTH: usize = 32;
+pub(crate) const SHA256_HASH_LENGTH: usize = 32;
 // byte size of an aes256 key
 pub(crate) const AES256_SECRET_LENGTH: usize = 32;
 // byte size of aes256 nonce
@@ -44,14 +44,10 @@ impl AssociatedData {
 impl TryFrom<&[u8; Self::SIZE]> for AssociatedData {
     type Error = X3dhError;
     fn try_from(value: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
-        let initiator_identity_key = PublicKey(*array_ref![
-            value,
-            2 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
-            CURVE25519_PUBLIC_LENGTH
-        ]);
+        let initiator_identity_key = PublicKey(*array_ref![value, 0, CURVE25519_PUBLIC_LENGTH]);
         let responder_identity_key = PublicKey(*array_ref![
             value,
-            3 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
+            CURVE25519_PUBLIC_LENGTH,
             CURVE25519_PUBLIC_LENGTH
         ]);
         Ok(AssociatedData {
@@ -76,6 +72,14 @@ pub struct InitialMessage {
 }
 
 impl InitialMessage {
+    // the byte size of a prekey bundle
+    pub(crate) const SIZE: usize = CURVE25519_PUBLIC_LENGTH
+        + CURVE25519_PUBLIC_LENGTH
+        + SHA256_HASH_LENGTH
+        + SHA256_HASH_LENGTH
+        + CURVE25519_PUBLIC_LENGTH
+        + CURVE25519_PUBLIC_LENGTH;
+
     pub fn to_bytes(self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(self.identity_key.0.as_ref());
@@ -95,6 +99,9 @@ impl TryFrom<String> for InitialMessage {
     type Error = X3dhError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let bytes = base64::decode(value)?;
+        if bytes.len() != Self::SIZE {
+            return Err(String::from("invalid initial message").into());
+        }
 
         let identity_key = PublicKey(*array_ref![bytes, 0, CURVE25519_PUBLIC_LENGTH]);
         let ephemeral_key = PublicKey(*array_ref![
@@ -105,16 +112,16 @@ impl TryFrom<String> for InitialMessage {
         let prekey_hash = Sha256Hash(*array_ref![
             bytes,
             2 * CURVE25519_PUBLIC_LENGTH,
-            HASH_LENGTH
+            SHA256_HASH_LENGTH
         ]);
         let one_time_key_hash = Sha256Hash(*array_ref![
             bytes,
-            2 * CURVE25519_PUBLIC_LENGTH + HASH_LENGTH,
-            HASH_LENGTH
+            2 * CURVE25519_PUBLIC_LENGTH + SHA256_HASH_LENGTH,
+            SHA256_HASH_LENGTH
         ]);
         let associated_data = AssociatedData::try_from(array_ref![
             bytes,
-            2 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH,
+            2 * CURVE25519_PUBLIC_LENGTH + 2 * SHA256_HASH_LENGTH,
             2 * CURVE25519_PUBLIC_LENGTH
         ])?;
 
@@ -143,10 +150,10 @@ pub struct PrekeyBundle {
 
 impl PrekeyBundle {
     // the byte size of a prekey bundle
-    pub(crate) const SIZE: usize = CURVE25519_SECRET_LENGTH
-        + CURVE25519_SECRET_LENGTH
+    pub(crate) const SIZE: usize = CURVE25519_PUBLIC_LENGTH
+        + CURVE25519_PUBLIC_LENGTH
         + SIGNATURE_LENGTH
-        + CURVE25519_SECRET_LENGTH;
+        + CURVE25519_PUBLIC_LENGTH;
 
     pub fn to_bytes(self) -> Vec<u8> {
         let mut out = Vec::new();
@@ -197,10 +204,10 @@ impl TryFrom<String> for PrekeyBundle {
 }
 
 #[derive(Clone, Copy, Eq)]
-pub struct Sha256Hash([u8; HASH_LENGTH]);
+pub struct Sha256Hash([u8; SHA256_HASH_LENGTH]);
 
-impl From<&[u8; HASH_LENGTH]> for Sha256Hash {
-    fn from(value: &[u8; HASH_LENGTH]) -> Sha256Hash {
+impl From<&[u8; SHA256_HASH_LENGTH]> for Sha256Hash {
+    fn from(value: &[u8; SHA256_HASH_LENGTH]) -> Sha256Hash {
         Sha256Hash(*value)
     }
 }
@@ -269,7 +276,7 @@ impl AsRef<[u8; CURVE25519_PUBLIC_LENGTH]> for PublicKey {
 impl PublicKey {
     pub(crate) fn hash(&self) -> Sha256Hash {
         let digest = Sha256::digest(self.0.as_ref());
-        Sha256Hash(*array_ref![digest, 0, HASH_LENGTH])
+        Sha256Hash(*array_ref![digest, 0, SHA256_HASH_LENGTH])
     }
 }
 

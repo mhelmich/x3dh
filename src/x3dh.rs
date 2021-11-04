@@ -120,7 +120,7 @@ fn hkdf(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{CURVE25519_PUBLIC_LENGTH, HASH_LENGTH};
+    use crate::types::{CURVE25519_PUBLIC_LENGTH, SHA256_HASH_LENGTH};
     use std::convert::TryFrom;
 
     #[test]
@@ -157,7 +157,7 @@ mod tests {
         let im_bytes = initial_message.to_bytes();
         assert_eq!(
             im_bytes.len(),
-            4 * CURVE25519_PUBLIC_LENGTH + 2 * HASH_LENGTH
+            4 * CURVE25519_PUBLIC_LENGTH + 2 * SHA256_HASH_LENGTH
         );
     }
 
