@@ -378,6 +378,7 @@ impl From<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_serde_prekey_bundle() {
         let mut rng = thread_rng();

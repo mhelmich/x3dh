@@ -21,6 +21,7 @@ pub(crate) fn verify(signature: &Signature, key: &PublicKey, data: &[u8]) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_sign_verify() {
         let private_key = PrivateKey::new();

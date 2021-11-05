@@ -104,6 +104,7 @@ impl XEddsaVerifier for XPublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_convert() {
         let nonce = [0u8; 64];
