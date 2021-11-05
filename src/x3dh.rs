@@ -10,16 +10,15 @@ use sha2::Sha256;
 
 pub(crate) fn generate_prekey_bundle(
     identity_key: &PrivateKey,
-    prekey: &PrivateKey,
-    one_time_key: &PrivateKey,
+    prekey: PublicKey,
+    one_time_key: PublicKey,
 ) -> PrekeyBundle {
-    let prekey_pub = PublicKey::from(prekey);
-    let signature = sign(identity_key, prekey_pub.as_ref());
+    let signature = sign(identity_key, prekey.as_ref());
     PrekeyBundle {
         identity_key: PublicKey::from(identity_key),
-        signed_prekey: prekey_pub,
+        signed_prekey: prekey,
         prekey_signature: signature,
-        one_time_prekey: PublicKey::from(one_time_key),
+        one_time_prekey: one_time_key,
     }
 }
 
@@ -37,7 +36,7 @@ pub(crate) fn process_prekey_bundle(
     }
 
     let ephemeral_key = PrivateKey::new();
-    let ephemeral_key_pub = PublicKey::from(ephemeral_key);
+    let ephemeral_key_pub = PublicKey::from(&ephemeral_key);
 
     // DH1 = DH(IKA, SPKB)
     let dh1 = identity_key.diffie_hellman(&bundle.signed_prekey);
@@ -127,8 +126,10 @@ mod tests {
     fn test_generate_prekey_bundle() {
         let identity_key = PrivateKey::new();
         let prekey = PrivateKey::new();
+        let prekey_pub = PublicKey::from(prekey);
         let one_time_key = PrivateKey::new();
-        let pb1 = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+        let one_time_key_pub = PublicKey::from(one_time_key);
+        let pb1 = generate_prekey_bundle(&identity_key, prekey_pub, one_time_key_pub);
         let pb1_bytes = pb1.to_bytes();
         assert_eq!(pb1_bytes.len(), PrekeyBundle::SIZE);
 
@@ -142,8 +143,10 @@ mod tests {
         let identity_key = PrivateKey::new();
         let identity_key_pub = PublicKey::from(&identity_key);
         let prekey = PrivateKey::new();
+        let prekey_pub = PublicKey::from(prekey);
         let one_time_key = PrivateKey::new();
-        let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+        let one_time_key_pub = PublicKey::from(one_time_key);
+        let pb = generate_prekey_bundle(&identity_key, prekey_pub, one_time_key_pub);
 
         let (initial_message, encryption_key, decryption_key) =
             process_prekey_bundle(identity_key, pb).unwrap();
@@ -165,11 +168,13 @@ mod tests {
     fn test_process_initial_message() {
         let identity_key = PrivateKey::new();
         let prekey = PrivateKey::new();
+        let prekey_pub = PublicKey::from(&prekey);
         let one_time_key = PrivateKey::new();
-        let pb = generate_prekey_bundle(&identity_key, &prekey, &one_time_key);
+        let one_time_key_pub = PublicKey::from(&one_time_key);
+        let pb = generate_prekey_bundle(&identity_key, prekey_pub, one_time_key_pub);
 
         let (initial_message, encryption_key1, decryption_key1) =
-            process_prekey_bundle(identity_key, pb).unwrap();
+            process_prekey_bundle(identity_key.clone(), pb).unwrap();
         let (encryption_key2, decryption_key2) =
             process_initial_message(identity_key, prekey, one_time_key, initial_message).unwrap();
         assert_eq!(encryption_key1.as_ref(), decryption_key2.as_ref());

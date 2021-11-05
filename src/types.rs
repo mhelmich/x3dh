@@ -6,6 +6,7 @@ use core::convert::TryFrom;
 use rand::prelude::*;
 use sha2::{Digest, Sha256};
 use std::hash::{Hash, Hasher};
+use zeroize::Zeroize;
 
 // implemented after:
 // https://signal.org/docs/specifications/x3dh/#x3dh-parameterss
@@ -224,7 +225,8 @@ impl PartialEq for Sha256Hash {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
 pub(crate) struct PrivateKey([u8; CURVE25519_SECRET_LENGTH]);
 
 impl PrivateKey {
@@ -295,6 +297,8 @@ impl From<[u8; SIGNATURE_LENGTH]> for Signature {
     }
 }
 
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub(crate) struct EncryptionKey([u8; AES256_SECRET_LENGTH]);
 
 impl EncryptionKey {
@@ -328,6 +332,8 @@ impl AsRef<[u8; AES256_SECRET_LENGTH]> for EncryptionKey {
     }
 }
 
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub(crate) struct DecryptionKey([u8; AES256_SECRET_LENGTH]);
 
 impl DecryptionKey {
@@ -361,6 +367,8 @@ impl AsRef<[u8; AES256_SECRET_LENGTH]> for DecryptionKey {
     }
 }
 
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub(crate) struct SharedSecret([u8; AES256_SECRET_LENGTH]);
 
 impl AsRef<[u8; AES256_SECRET_LENGTH]> for SharedSecret {
