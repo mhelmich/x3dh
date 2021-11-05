@@ -1,5 +1,25 @@
-// graciously taken from here: https://github.com/ockam-network/ockam/blob/develop/implementations/rust/ockam/ockam_vault/src/xeddsa.rs
-//! Performe XEdDSA according to
+// This fiile has been taken from here: https://github.com/ockam-network/ockam/blob/develop/implementations/rust/ockam/ockam_vault/src/xeddsa.rs
+// The original source code is licensed under Apache 2.0.
+// Hence I'm retaining the original license header in this file.
+
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+
+//   http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+//! Performes XEdDSA according to
 //! <https://signal.org/docs/specifications/xeddsa/#xeddsa>
 
 use curve25519_dalek::{
