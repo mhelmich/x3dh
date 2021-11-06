@@ -9,7 +9,7 @@ use std::hash::{Hash, Hasher};
 use zeroize::Zeroize;
 
 // implemented after:
-// https://signal.org/docs/specifications/x3dh/#x3dh-parameterss
+// https://signal.org/docs/specifications/x3dh
 
 // byte size of a Curve25519 private key
 pub(crate) const CURVE25519_SECRET_LENGTH: usize = 32;
@@ -25,6 +25,13 @@ pub(crate) const SHA256_HASH_LENGTH: usize = 32;
 pub(crate) const AES256_SECRET_LENGTH: usize = 32;
 // byte size of aes256 nonce
 pub(crate) const AES256_NONCE_LENGTH: usize = 12;
+
+// The structure of a message.
+pub struct Message {
+    pub nonce: [u8; AES256_NONCE_LENGTH],
+    pub ratchet_key: PublicKey,
+    pub message: [u8],
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct AssociatedData {
@@ -251,7 +258,7 @@ impl AsRef<[u8; CURVE25519_SECRET_LENGTH]> for PrivateKey {
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct PublicKey([u8; CURVE25519_PUBLIC_LENGTH]);
+pub struct PublicKey([u8; CURVE25519_PUBLIC_LENGTH]);
 
 impl From<PrivateKey> for PublicKey {
     fn from(private_key: PrivateKey) -> PublicKey {
